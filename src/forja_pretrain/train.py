@@ -102,13 +102,53 @@ def train(cfg: ExperimentConfig) -> dict:
 
     g = torch.Generator().manual_seed(tc.seed)
     tokens_per_step = tc.batch_size * tc.grad_accum * cfg.data.seq_len
-    history: list[dict] = []
     best_val = math.inf
+    start_step = 0
+    last_path, hist_path = out / "last.pt", out / "history.jsonl"
+
+    if tc.resume and last_path.exists():
+        ck = torch.load(last_path, map_location=device, weights_only=False)
+        if ck["config"]["model"] != cfg.to_dict()["model"]:
+            raise ValueError(f"{last_path} é de outra arquitetura; use outro out_dir ou train.resume=false")
+        model.load_state_dict(ck["model"])
+        opt.load_state_dict(ck["opt"])
+        scaler.load_state_dict(ck["scaler"])
+        g.set_state(ck["gen_state"])
+        torch.set_rng_state(ck["torch_rng"])
+        start_step, best_val = ck["step"], ck["best_val"]
+        print(f"[forja] retomando do passo {start_step} (melhor val_loss={best_val:.4f})")
+    else:
+        hist_path.write_text("", encoding="utf-8")
+
+    def log(rec: dict) -> None:
+        with hist_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(rec) + "\n")
+        if wandb_run:
+            wandb_run.log(rec, step=rec["step"])
+
+    def save_last(next_step: int) -> None:
+        tmp = last_path.with_suffix(".tmp")
+        torch.save(
+            {
+                "model": model.state_dict(),
+                "opt": opt.state_dict(),
+                "scaler": scaler.state_dict(),
+                "gen_state": g.get_state(),
+                "torch_rng": torch.get_rng_state(),
+                "step": next_step,
+                "best_val": best_val,
+                "config": cfg.to_dict(),
+            },
+            tmp,
+        )
+        tmp.replace(last_path)  # escrita atômica: queda no meio não corrompe o checkpoint anterior
+
     if device == "cuda":
         torch.cuda.reset_peak_memory_stats()
-    t0 = time.perf_counter()
+    t_start = t0 = time.perf_counter()
+    finished = True
 
-    for step in range(tc.max_steps + 1):
+    for step in range(start_step, tc.max_steps + 1):
         lr = lr_at(
             step,
             lr=tc.lr,
@@ -123,10 +163,8 @@ def train(cfg: ExperimentConfig) -> dict:
         if step % tc.eval_every == 0 or step == tc.max_steps:
             val_loss = evaluate(fwd, val_s, tc.eval_batches, tc.batch_size, device, autocast)
             rec = {"step": step, "val_loss": val_loss, "val_ppl": math.exp(min(val_loss, 20))}
-            history.append(rec)
+            log(rec)
             print(f"[eval] step={step} val_loss={val_loss:.4f} val_ppl={rec['val_ppl']:.2f}")
-            if wandb_run:
-                wandb_run.log(rec, step=step)
             if val_loss < best_val:
                 best_val = val_loss
                 torch.save(
@@ -162,16 +200,29 @@ def train(cfg: ExperimentConfig) -> dict:
                 "grad_norm": grad_norm,
                 "tok_per_s": tokens_per_step * steps_done / dt,
             }
-            history.append(rec)
+            log(rec)
             print(
                 f"[train] step={step} loss={loss_acc:.4f} lr={lr:.2e} gnorm={grad_norm:.2f} "
                 f"tok/s={rec['tok_per_s']:.0f}"
             )
-            if wandb_run:
-                wandb_run.log(rec, step=step)
+
+        nxt = step + 1
+        hit_time = tc.max_hours is not None and (time.perf_counter() - t_start) / 3600 >= tc.max_hours
+        hit_stop = tc.stop_at_step is not None and nxt >= tc.stop_at_step
+        if nxt % tc.ckpt_every == 0 or hit_time or hit_stop:
+            save_last(nxt)
+        if hit_time or hit_stop:
+            finished = False
+            print(
+                f"[forja] parando no passo {nxt} ({'tempo' if hit_time else 'stop_at_step'}); "
+                "rode de novo para retomar"
+            )
+            break
 
     summary = {
         "name": cfg.name,
+        "concluido": finished,
+        "passos": tc.max_steps if finished else nxt,
         "best_val_loss": best_val,
         "best_val_ppl": math.exp(min(best_val, 20)),
         "params_non_embedding": model.num_params(),
@@ -180,7 +231,6 @@ def train(cfg: ExperimentConfig) -> dict:
         "device": device,
         "torch": torch.__version__,
     }
-    (out / "history.jsonl").write_text("\n".join(json.dumps(h) for h in history) + "\n", encoding="utf-8")
     (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     if wandb_run:
         wandb_run.summary.update(summary)

@@ -1,0 +1,31 @@
+# Config base adaptada ao T4 (16 GB) do Kaggle/Colab. Mesma arquitetura e mesmos tokens por passo da
+# base.yaml; muda só o que o hardware exige.
+name: base-d384-l6-t4
+model:
+  vocab_size: 151936
+  d_model: 384
+  n_layers: 6
+  n_heads: 6
+  n_kv_heads: 6
+  max_seq_len: 512
+data:
+  train_bin: data/train.bin
+  val_bin: data/val.bin
+  seq_len: 512
+train:
+  seed: 1337
+  # Com vocab de 152k, os logits dominam a memória: 8 x 512 x 151936 em fp32 = 2,5 GB só para a loss
+  # (mais o gradiente). Micro-batch 8 com accum 8 mantém os mesmos 32k tokens/passo da base.yaml.
+  batch_size: 8
+  grad_accum: 8
+  max_steps: 8000        # ~262M tokens
+  lr: 6.0e-4
+  warmup_steps: 300
+  schedule: cosine
+  dtype: float16         # T4 não tem bf16 nativo; o GradScaler cuida do underflow
+  eval_every: 500
+  eval_batches: 50
+  log_every: 50
+  ckpt_every: 250        # ~poucos minutos de trabalho perdido no pior caso
+  max_hours: 11.0        # Kaggle derruba em 12 h; salva e encerra antes, com folga para o output
+  out_dir: runs/base-d384-l6-t4

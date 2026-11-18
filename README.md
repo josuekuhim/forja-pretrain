@@ -46,7 +46,20 @@ uv run forja-train configs/base.yaml
 uv run forja-train configs/base.yaml model.n_kv_heads=2 train.out_dir=runs/gqa2   # ablação
 ```
 
-Cada execução salva em `runs/<nome>/`: `config.yaml` resolvida, `history.jsonl`, `summary.json` e `best.pt`.
+Cada execução salva em `runs/<nome>/`: `config.yaml` resolvida, `history.jsonl`, `summary.json`, `best.pt` e `last.pt`.
+
+### Na GPU gratuita (Kaggle ou Colab)
+
+Abra [`notebooks/kaggle_pretrain.ipynb`](notebooks/kaggle_pretrain.ipynb), ligue a GPU T4 e rode tudo. Ele clona o repo, prepara o corpus, treina com [`configs/kaggle-t4.yaml`](configs/kaggle-t4.yaml), gera os gráficos e exporta (ou publica no Hub) no formato do contrato.
+
+- **Retomada:** checkpoint completo (`last.pt`: modelo, otimizador, scaler e estado do gerador de amostras) a cada 250 passos, gravado de forma atômica. Rodar de novo retoma do mesmo passo, com resultado **idêntico** ao de um treino contínuo (`test_retomada_identica_ao_treino_continuo`).
+- **Limite de sessão:** `train.max_hours: 11` salva e encerra antes de o Kaggle derrubar a sessão em 12 h.
+- **Memória:** com vocab de 152k, os logits dominam a VRAM (8 × 512 × 151936 em fp32 = 2,5 GB só para a loss). A config do T4 usa micro-batch 8 com accum 8, mantendo os 32k tokens por passo.
+
+```bash
+uv run python scripts/plot_history.py runs/a runs/b --out comparacao.png   # curvas de vários runs
+uv run python scripts/export_hub.py runs/a export/a [--push usuario/repo]  # safetensors + model card
+```
 
 ## Testes
 

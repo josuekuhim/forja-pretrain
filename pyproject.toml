@@ -2,11 +2,12 @@
 name = "forja-pretrain"
 version = "0.1.0"
 description = "Transformer decoder-only do zero, pré-treinado com o tokenizer do modelo base do Forja"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.10"
 dependencies = [
     "torch>=2.4",
     "numpy>=1.26",
     "pyyaml>=6",
+    "safetensors>=0.4",
 ]
 
 [project.optional-dependencies]
@@ -17,7 +18,11 @@ track = ["wandb>=0.18", "matplotlib>=3.9"]
 forja-train = "forja_pretrain.train:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6"]
+dev = [
+    "matplotlib>=3.8",
+    "pytest>=8",
+    "ruff>=0.6",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -40,8 +45,9 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 110
-target-version = "py312"
+target-version = "py310"
+extend-exclude = ["notebooks"]  # notebooks são para ler e rodar no Kaggle/Colab, não código de biblioteca
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
-ignore = ["N806"]
+ignore = ["N806", "E501"]  # o formatter cuida do código; docstrings e model cards podem passar

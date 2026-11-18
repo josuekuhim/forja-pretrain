@@ -63,6 +63,11 @@ class TrainConfig:
     compile: bool = False
     out_dir: str = "runs/default"
     wandb_project: str | None = None
+    # Sessões de GPU gratuitas caem (Kaggle: 12 h). Checkpoint completo a cada N passos e retomada automática.
+    ckpt_every: int = 250
+    resume: bool = True
+    max_hours: float | None = None  # salva e encerra antes do limite da sessão
+    stop_at_step: int | None = None  # para no passo N (sessões curtas, testes de retomada)
 
 
 @dataclass
