@@ -1,0 +1,24 @@
+# Roda em CPU em segundos: valida o pipeline, não o modelo.
+name: smoke
+model:
+  vocab_size: 256
+  d_model: 64
+  n_layers: 2
+  n_heads: 4
+  n_kv_heads: 2
+  max_seq_len: 64
+data:
+  train_bin: data/smoke/train.bin
+  val_bin: data/smoke/val.bin
+  seq_len: 64
+train:
+  batch_size: 8
+  grad_accum: 1
+  max_steps: 60
+  lr: 3.0e-3
+  warmup_steps: 10
+  dtype: float32
+  eval_every: 30
+  eval_batches: 5
+  log_every: 10
+  out_dir: runs/smoke

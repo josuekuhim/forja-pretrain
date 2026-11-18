@@ -1,0 +1,47 @@
+[project]
+name = "forja-pretrain"
+version = "0.1.0"
+description = "Transformer decoder-only do zero, pré-treinado com o tokenizer do modelo base do Forja"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "torch>=2.4",
+    "numpy>=1.26",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+data = ["datasets>=3", "tokenizers>=0.20"]
+track = ["wandb>=0.18", "matplotlib>=3.9"]
+
+[project.scripts]
+forja-train = "forja_pretrain.train:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/forja_pretrain"]
+
+# CPU local; no Kaggle/Colab o torch com CUDA já vem instalado.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'win32'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["N806"]

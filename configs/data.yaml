@@ -1,0 +1,22 @@
+# Corpus do forja-pretrain. Confira a licença de cada fonte antes de publicar o modelo.
+tokenizer: Qwen/Qwen2.5-Coder-1.5B-Instruct   # ADR 0001 (repo forja)
+eos_token: "<|endoftext|>"
+out_dir: data
+total_tokens: 300_000_000   # ~300M: cabe numa sessão de GPU gratuita para um modelo de ~20M não-embedding
+val_fraction: 0.005
+
+sources:
+  - path: wikimedia/wikipedia
+    name: 20231101.pt
+    split: train
+    text_field: text
+    weight: 0.5
+    license: CC-BY-SA-3.0
+  # Código: escolha uma fonte permissiva e sem gate. Opções a avaliar:
+  #   - bigcode/the-stack-smol (gated, exige aceitar termos no Hub)
+  #   - codeparrot/codeparrot-clean (Python, sem gate)
+  - path: codeparrot/codeparrot-clean
+    split: train
+    text_field: content
+    weight: 0.5
+    license: "várias (filtrado do GitHub; ver dataset card)"

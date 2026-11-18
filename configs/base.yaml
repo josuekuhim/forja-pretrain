@@ -1,0 +1,25 @@
+# Configuração de referência. Experimentos mudam UMA chave por vez a partir daqui.
+name: base-d384-l6
+model:
+  vocab_size: 151936
+  d_model: 384
+  n_layers: 6
+  n_heads: 6
+  n_kv_heads: 6
+  max_seq_len: 512
+data:
+  train_bin: data/train.bin
+  val_bin: data/val.bin
+  seq_len: 512
+train:
+  seed: 1337
+  batch_size: 16
+  grad_accum: 4          # 16 * 4 * 512 = 32k tokens por passo
+  max_steps: 8000        # ~262M tokens
+  lr: 6.0e-4
+  warmup_steps: 300
+  schedule: cosine
+  dtype: float16         # T4/P100 do Kaggle/Colab não têm bf16 nativo; em A100/L4 use bfloat16
+  eval_every: 500
+  out_dir: runs/base-d384-l6
+  wandb_project: null
