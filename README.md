@@ -1,12 +1,12 @@
 # forja-pretrain
 
-**A decoder-only Transformer from scratch, pretrained on Portuguese + code with the tokenizer of [Forja](../forja)'s base model.**
+**A decoder-only Transformer from scratch, pretrained on Portuguese + code with the tokenizer of [Forja](https://github.com/josuekuhim/forja)'s base model.**
 
 > Result: _pending_. Validation perplexity, tokens/s and the acceptance rate as a draft model go here once it is trained.
 
 ## Role in the system
 
-It uses **the same tokenizer as the base model** (Qwen2.5-Coder, see [ADR 0001](../forja/docs/adr/0001-modelo-base.md)). That is why it becomes the *draft model* for speculative decoding in `forja-serve`.
+It uses **the same tokenizer as the base model** (Qwen2.5-Coder, see [ADR 0001](https://github.com/josuekuhim/forja/blob/main/docs/adr/0001-modelo-base.md)). That is why it becomes the *draft model* for speculative decoding in `forja-serve`.
 
 ## Architecture
 
